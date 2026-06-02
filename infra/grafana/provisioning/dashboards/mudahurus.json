@@ -1,0 +1,35 @@
+{
+  "title": "MUDAHURUS 2.0 — Service Overview",
+  "uid": "mudahurus-overview",
+  "schemaVersion": 39,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "API request rate (by status class)",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [
+        {"expr": "sum by (status) (rate(mudahurus_http_requests_total[5m]))"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "API p95 latency (s)",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "targets": [
+        {"expr": "histogram_quantile(0.95, sum by (le,route) (rate(mudahurus_http_request_duration_seconds_bucket[5m])))"}
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Assistant refusals",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "targets": [{"expr": "mudahurus_rag_assistant_refused"}]
+    },
+    {
+      "type": "stat",
+      "title": "Retrieval p95 (ms)",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "targets": [{"expr": "mudahurus_rag_retrieve_latency_p95_ms"}]
+    }
+  ]
+}

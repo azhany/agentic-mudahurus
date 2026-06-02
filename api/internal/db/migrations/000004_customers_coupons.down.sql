@@ -1,0 +1,3 @@
+ALTER TABLE orders DROP CONSTRAINT IF EXISTS fk_orders_customer;
+DROP TABLE IF EXISTS coupons;
+DROP TABLE IF EXISTS customers;

@@ -1,0 +1,18 @@
+# Go
+api/bin/
+*.test
+# Node
+web/node_modules/
+web/dist/
+# Python
+rag/.venv/
+migration/.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+# Env / secrets
+.env
+.env.local
+# OS
+.DS_Store

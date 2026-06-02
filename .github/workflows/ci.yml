@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  api:
+    name: Go API — lint, test, build, migrate-check
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: mudahurus
+          POSTGRES_PASSWORD: mudahurus
+          POSTGRES_DB: mudahurus
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U mudahurus"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.22" }
+      - run: go vet ./...
+      - run: go build ./...
+      - run: go test ./... -race
+        env:
+          DATABASE_URL: postgres://mudahurus:mudahurus@localhost:5432/mudahurus?sslmode=disable
+      # Migration dry-run gate: apply all up migrations against the CI Postgres.
+      - name: Migrate-check
+        run: go run ./cmd/migratecheck
+        env:
+          DATABASE_URL: postgres://mudahurus:mudahurus@localhost:5432/mudahurus?sslmode=disable
+
+  rag:
+    name: RAG plane — test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rag
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -e '.[dev]'
+      - run: pytest -q
+
+  migration:
+    name: Migration — transform tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: migration
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -e '.[dev]'
+      - run: pytest -q
+
+  web:
+    name: Web SPA — lint & build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - run: npm install
+      - run: npm run build
+
+  deploy-staging:
+    name: Deploy to staging
+    needs: [api, rag, migration, web]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build & push images (placeholder)
+        run: echo "build images, push to registry, deploy to staging; prod promote is manual"

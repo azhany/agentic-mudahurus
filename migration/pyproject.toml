@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mudahurus-migrate"
+version = "1.0.0"
+description = "Legacy MySQL -> PostgreSQL migration for MUDAHURUS 2.0 (MH-406)"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.optional-dependencies]
+full = ["pymysql>=1.1", "psycopg[binary]>=3.1", "boto3>=1.34"]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+include = ["mudahurus_migrate*"]
