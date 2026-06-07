@@ -68,7 +68,7 @@ import Modal from '../components/Modal.vue'
 const { t } = useI18n()
 const items = ref([]), detail = ref(null), err = ref(''), status = ref(''), search = ref(''), newStatus = ref('')
 const statuses = ['pending','payment_received','payment_accepted','shipped','expired','cancelled','rejected']
-const invoiceUrl = computed(() => detail.value ? `${import.meta.env.VITE_API_BASE_URL || ''}/orders/${detail.value.id}/invoice.pdf` : '#')
+const invoiceUrl = computed(() => detail.value ? `${import.meta.env.VITE_API_BASE_URL || '/api'}/orders/${detail.value.id}/invoice.pdf` : '#')
 
 let timer
 function debouncedLoad() { clearTimeout(timer); timer = setTimeout(load, 300) }

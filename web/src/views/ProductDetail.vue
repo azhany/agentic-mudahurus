@@ -51,7 +51,7 @@ const { t } = useI18n()
 const route = useRoute()
 const username = route.params.username
 const id = route.params.id
-const BASE = import.meta.env.VITE_API_BASE_URL || ''
+const BASE = import.meta.env.VITE_API_BASE_URL || '/api'
 const product = ref(null), checkout = ref(false), placed = ref(null), err = ref(''), proofMsg = ref(''), qty = ref(1)
 const f = reactive({ full_name:'', contact_no:'', email:'', mailing_addr:'', city:'', postcode:'' })
 

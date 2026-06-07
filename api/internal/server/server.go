@@ -52,7 +52,9 @@ func (a *App) buildStorage() (storage.Storage, bool) {
 		a.Log.Warn("s3 unavailable, falling back to local disk storage")
 	}
 	root := filepath.Join(".data", "objects")
-	local, err := storage.NewLocal(root, "http://localhost"+a.Cfg.HTTPAddr+"/files", a.Cfg.JWTAccessSecret)
+	// Relative base so signed URLs resolve against the browser's origin and flow
+	// through the SPA dev-proxy / nginx (/api/files/*) in every environment.
+	local, err := storage.NewLocal(root, "/api/files", a.Cfg.JWTAccessSecret)
 	if err != nil {
 		a.Log.Error("local storage init failed", "error", err)
 	}
@@ -94,13 +96,18 @@ func (a *App) Mount() {
 
 	accessLogger := accesslog.New(a.Pool, a.Log)
 
+	// All JSON API routes live under /api so the SPA can own the human-facing
+	// paths (/store/{username}, /invoice/{id}, /admin/*, /login) without colliding
+	// with the API (ARCHITECTURE §4: clean REST API behind the Vue SPA).
+	apiRoot := e.Group("/api")
+
 	// --- public (unauthenticated) routes ---
-	public := e.Group("")
+	public := apiRoot.Group("")
 	public.Use(accessLogger.Middleware())
 	authHandlerPublic := public
 
 	// Auth: register handler needs both public + authed groups; build authed first.
-	authed := e.Group("")
+	authed := apiRoot.Group("")
 	authed.Use(a.AuthMW.Authenticated())
 
 	authHandler.Routes(authHandlerPublic, authed)
@@ -114,7 +121,7 @@ func (a *App) Mount() {
 	assistantHandler.AdminRoutes(authed)
 
 	// Operator-only example route group (RBAC demo, MH-104).
-	operator := e.Group("/operator")
+	operator := apiRoot.Group("/operator")
 	operator.Use(a.AuthMW.Authenticated(), a.AuthMW.RequireRole("operator"))
 	operator.GET("/tenants/count", func(c echo.Context) error {
 		var n int
@@ -123,7 +130,7 @@ func (a *App) Mount() {
 	})
 
 	// --- public storefront (rate limited) ---
-	storeGroup := e.Group("")
+	storeGroup := apiRoot.Group("")
 	storeGroup.Use(accessLogger.Middleware())
 	storeGroup.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(20)))
 	storefrontHandler.Routes(storeGroup)
@@ -141,22 +148,22 @@ func (a *App) Mount() {
 		publicBase = "http://localhost" + a.Cfg.HTTPAddr
 	}
 	ehModule := enhancements.NewModule(a.Pool, catalogSvc, ordersSvc, ordersRepo, a.Mailer, a.Log, publicBase)
-	ehPublic := e.Group("")
+	ehPublic := apiRoot.Group("")
 	ehPublic.Use(accessLogger.Middleware())
 	ehModule.Routes(authed, ehPublic)
 	ehModule.StartBackground(context.Background())
 
-	// --- local object-storage serve route (signed) ---
+	// --- local object-storage serve route (signed), under /api/files/* ---
 	if isLocal {
 		if ls, ok := store.(*storage.LocalStorage); ok {
-			e.GET("/files/:key", localFileHandler(ls))
+			e.GET("/api/files/*", localFileHandler(ls))
 		}
 	}
 }
 
 func localFileHandler(ls *storage.LocalStorage) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		key := c.Param("key")
+		key := c.Param("*")
 		sig := c.QueryParam("sig")
 		exp, _ := strconv.ParseInt(c.QueryParam("exp"), 10, 64)
 		if !ls.Verify(key, sig, exp) {

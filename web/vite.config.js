@@ -6,9 +6,9 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      // dev: proxy API calls to the Go service
-      '^/(auth|me|products|categories|orders|pending_orders|customers|coupons|dashboard|store|invoice|assistant|operator|files|payments)':
-        { target: 'http://localhost:8080', changeOrigin: true },
+      // dev: only the /api namespace goes to the Go service; everything else is
+      // served by the SPA (so /store/:username, /invoice/:id render the page).
+      '/api': { target: 'http://localhost:8080', changeOrigin: true },
     },
   },
 })

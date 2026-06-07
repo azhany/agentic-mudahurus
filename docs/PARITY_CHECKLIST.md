@@ -3,6 +3,10 @@
 Verifies FR-1 … FR-8 reach parity with the legacy CodeIgniter app, plus the new
 FR-9 RAG foundation. ✅ = implemented & exercised.
 
+> JSON API endpoints below are served under the **`/api`** namespace (e.g.
+> `/api/auth/login`); the bare paths (`/store/{username}`, `/invoice/{id}`,
+> `/login`, `/admin/*`) are the Vue SPA's human-facing pages.
+
 | FR | Legacy behaviour | v1 endpoint(s) | Status |
 |---|---|---|---|
 | FR-1.1 register/login/logout | `admin/auth/*` | `POST /auth/register`,`/auth/login`,`/auth/logout` | ✅ |

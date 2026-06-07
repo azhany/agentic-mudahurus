@@ -40,7 +40,7 @@ import { useRoute } from 'vue-router'
 const { t } = useI18n()
 const route = useRoute()
 const username = route.params.username
-const BASE = import.meta.env.VITE_API_BASE_URL || ''
+const BASE = import.meta.env.VITE_API_BASE_URL || '/api'
 const store = ref({}), products = ref([]), q = ref(''), ask = ref(''), answer = ref(null)
 
 async function load() {

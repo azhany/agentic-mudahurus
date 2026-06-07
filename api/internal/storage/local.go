@@ -63,7 +63,9 @@ func (s *LocalStorage) SignedGetURL(ctx context.Context, key string, ttlSeconds 
 	q := url.Values{}
 	q.Set("exp", strconv.FormatInt(exp, 10))
 	q.Set("sig", sig)
-	return fmt.Sprintf("%s/%s?%s", s.baseURL, url.PathEscape(key), q.Encode()), nil
+	// key contains '/' (tenant/prefix/file); served via a wildcard route, so it
+	// is kept raw in the path (not percent-escaped).
+	return fmt.Sprintf("%s/%s?%s", s.baseURL, key, q.Encode()), nil
 }
 
 func (s *LocalStorage) Delete(ctx context.Context, key string) error {

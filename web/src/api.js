@@ -3,7 +3,7 @@
 // and retries the request once.
 import { useAuthStore } from './stores/auth'
 
-const BASE = import.meta.env.VITE_API_BASE_URL || ''
+const BASE = import.meta.env.VITE_API_BASE_URL || '/api'
 
 async function request(method, path, { body, isForm, retry = true } = {}) {
   const auth = useAuthStore()

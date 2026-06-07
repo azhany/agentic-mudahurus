@@ -324,7 +324,7 @@ func (m *Module) charge(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	redirect := fmt.Sprintf("%s/pay/mock/%s?order=%s&payment=%s", m.publicBase, res.GatewayRef, oid, pay.ID)
+	redirect := fmt.Sprintf("%s/api/pay/mock/%s?order=%s&payment=%s", m.publicBase, res.GatewayRef, oid, pay.ID)
 	return c.JSON(http.StatusOK, map[string]any{
 		"gateway_ref":  res.GatewayRef,
 		"status":       res.Status,
@@ -346,7 +346,7 @@ func (m *Module) mockHostedPage(c echo.Context) error {
 <p id="msg"></p>
 <script>
 document.getElementById('pay').onclick=async()=>{
-  const r=await fetch('/payments/webhook',{method:'POST',headers:{'Content-Type':'application/json'},
+  const r=await fetch('/api/payments/webhook',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({order_id:'%s',payment_id:'%s',gateway_ref:'%s',status:'paid'})});
   document.getElementById('msg').textContent = r.ok ? 'Payment confirmed ✓' : 'Failed';
 };

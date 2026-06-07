@@ -23,6 +23,9 @@ mounted.)
 
 ## Endpoints (all admin endpoints require a seller JWT)
 
+> All paths below are under the **`/api`** namespace (e.g. the full path for the
+> first one is `POST /api/copilot/interpret`). Omitted here for brevity.
+
 ### EH-1 — Seller Copilot (multi-agent orchestration)
 - `POST /copilot/interpret` `{ "message": "add product Kuih Lapis price RM12.50 category Makanan" }`
   → `{ agent, actions:[{Kind,Target,Params}] }` (parses NL; never executes)

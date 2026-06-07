@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 
-const BASE = import.meta.env.VITE_API_BASE_URL || ''
+const BASE = import.meta.env.VITE_API_BASE_URL || '/api'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({

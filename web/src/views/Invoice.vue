@@ -32,7 +32,7 @@ import { useRoute } from 'vue-router'
 
 const { t } = useI18n()
 const route = useRoute()
-const BASE = import.meta.env.VITE_API_BASE_URL || ''
+const BASE = import.meta.env.VITE_API_BASE_URL || '/api'
 const id = route.params.id
 const inv = ref(null)
 const order = computed(() => inv.value?.order || {})

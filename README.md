@@ -67,23 +67,32 @@ This creates the three personas from the PRD (§4):
 > open `/store/kedaiali` in the SPA (no login). Customer *records* (Aminah, Hafiz)
 > are seeded under the seller for the admin Customers screen.
 
+> **API base path:** every JSON endpoint is namespaced under **`/api`** so the
+> Vue SPA can own the human-facing routes (`/store/{username}`, `/invoice/{id}`,
+> `/admin/*`, `/login`). Health/readiness/metrics stay at the root
+> (`/healthz`, `/readyz`, `/metrics`). The SPA dev-proxy (Vite) and prod nginx
+> forward `/api` → the Go service.
+
 ### Test each persona quickly (curl)
 ```bash
 # Super Admin — operator-only route
-TOKEN=$(curl -s -X POST localhost:8080/auth/login -H 'Content-Type: application/json' \
+TOKEN=$(curl -s -X POST localhost:8080/api/auth/login -H 'Content-Type: application/json' \
   -d '{"username":"superadmin","password":"superadmin123"}' | jq -r .access_token)
-curl -s localhost:8080/operator/tenants/count -H "Authorization: Bearer $TOKEN"
+curl -s localhost:8080/api/operator/tenants/count -H "Authorization: Bearer $TOKEN"
 
 # Store Owner — dashboard KPIs
-TOKEN=$(curl -s -X POST localhost:8080/auth/login -H 'Content-Type: application/json' \
+TOKEN=$(curl -s -X POST localhost:8080/api/auth/login -H 'Content-Type: application/json' \
   -d '{"username":"kedaiali","password":"kedaiali123"}' | jq -r .access_token)
-curl -s localhost:8080/dashboard/counts -H "Authorization: Bearer $TOKEN"
+curl -s localhost:8080/api/dashboard/counts -H "Authorization: Bearer $TOKEN"
 
-# Customer — public storefront (no auth)
-curl -s localhost:8080/store/kedaiali
+# Customer — public storefront DATA (the API returns JSON)
+curl -s localhost:8080/api/store/kedaiali
 ```
 
-In the SPA: log in at `/login`, or open the storefront at `/store/kedaiali`.
+**To view the storefront as a customer, open the SPA page (not the API):**
+run `cd web && npm run dev` and visit **`http://localhost:5173/store/kedaiali`**
+in a browser — that renders the Vue storefront page (browse → checkout → invoice).
+Admins log in at `http://localhost:5173/login`.
 
 ## Roadmap status
 
