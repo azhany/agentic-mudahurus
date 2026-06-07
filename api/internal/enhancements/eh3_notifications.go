@@ -1,6 +1,16 @@
 package enhancements
 
-import "context"
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"log/slog"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/mudahurus/api/internal/notify"
+)
 
 // EH-3 — Notifications: WhatsApp/email order updates & reminders.
 // Extends the v1 notify.Mailer concept to multiple channels behind one
@@ -44,4 +54,58 @@ func (m *MultiChannelNotifier) Notify(ctx context.Context, n Notification) error
 		return s.Notify(ctx, n)
 	}
 	return nil // no-op when channel not configured (v1)
+}
+
+// Render fills a template body with the notification vars.
+func Render(template string, vars map[string]string) string {
+	body, ok := Templates[template]
+	if !ok {
+		body = template // allow raw bodies
+	}
+	for k, v := range vars {
+		body = strings.ReplaceAll(body, "{"+k+"}", v)
+	}
+	return body
+}
+
+// EmailSender bridges EH-3 to the v1 notify.Mailer (log sink in dev, SMTP later).
+type EmailSender struct{ Mailer notify.Mailer }
+
+func (e *EmailSender) Notify(ctx context.Context, n Notification) error {
+	return e.Mailer.Send(ctx, notify.Message{
+		To:      n.Recipient,
+		Subject: "MUDAHURUS: " + n.Template,
+		Body:    Render(n.Template, n.Vars),
+	})
+}
+
+// WhatsAppSender POSTs to a configured WhatsApp Business API webhook. When no
+// URL is configured it logs (dev default) instead of failing.
+type WhatsAppSender struct {
+	WebhookURL string
+	Client     *http.Client
+	Log        *slog.Logger
+}
+
+func (w *WhatsAppSender) Notify(ctx context.Context, n Notification) error {
+	body := Render(n.Template, n.Vars)
+	if w.WebhookURL == "" {
+		w.Log.Info("whatsapp (log sink)", "to", n.Recipient, "body", body)
+		return nil
+	}
+	payload, _ := json.Marshal(map[string]string{"to": n.Recipient, "message": body})
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, w.WebhookURL, bytes.NewReader(payload))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	cl := w.Client
+	if cl == nil {
+		cl = &http.Client{Timeout: 5 * time.Second}
+	}
+	resp, err := cl.Do(req)
+	if err != nil {
+		return err
+	}
+	return resp.Body.Close()
 }

@@ -42,6 +42,7 @@ const nav = [
   { key: 'orders', to: '/admin/orders' },
   { key: 'customers', to: '/admin/customers' },
   { key: 'coupons', to: '/admin/coupons' },
+  { key: 'copilot', to: '/admin/copilot' },
 ]
 
 const _ = computed(() => (localStorage.setItem('mh_locale', locale.value), locale.value))

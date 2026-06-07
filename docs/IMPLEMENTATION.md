@@ -59,16 +59,26 @@ implements it. Status legend: ✅ implemented & tested · 🟡 scaffold (post-v1
 | MH-605 Observability + runbook | ✅ | Prometheus/Grafana in `infra/`, [`RUNBOOK.md`](./RUNBOOK.md) |
 | MH-606 Parity acceptance + cutover | ✅ | [`PARITY_CHECKLIST.md`](./PARITY_CHECKLIST.md) |
 
-## Enhancement Backlog (EH-1 … EH-6) — POST-V1 scaffolds (flags default OFF)
-| EH-1 Multi-agent orchestration | 🟡 | `api/internal/enhancements/eh1_orchestration.go`, `rag/.../enhancements/orchestration.py` |
-| EH-2 Autonomous fulfillment | 🟡 | `enhancements/eh2_fulfillment.go` (auto-chase decision, tracking provider) |
-| EH-3 Notifications | 🟡 | `enhancements/eh3_notifications.go` (WhatsApp/email channels, BM templates) |
-| EH-4 AI content | 🟡 | `enhancements/eh4_ai_content.go` (descriptions/SEO/auto-categorize) |
-| EH-5 Recommendations & analytics | 🟡 | `enhancements/eh5_recommendations.go` (sales-drop insight, upsell iface) |
-| EH-6 Payments + multi-currency | 🟡 | `enhancements/eh6_payments.go` (gateway iface, manual gateway = v1) |
+## Enhancement Backlog (EH-1 … EH-6) — IMPLEMENTED & MOUNTED (post-v1)
+See [`ENHANCEMENTS.md`](./ENHANCEMENTS.md) for endpoints + flags. Wired in
+`server.Mount` via `enhancements.NewModule(...).Routes(authed, public)`.
+| EH | Status | Endpoints / behaviour | Code |
+|---|---|---|---|
+| EH-1 Multi-agent orchestration | ✅ | `POST /copilot/interpret`,`/copilot/execute` (NL→action→execute, human-confirm); Vue `Copilot.vue`; router + agents | `eh1_orchestration.go`, `module.go`, `rag/.../enhancements/orchestration.py` |
+| EH-2 Autonomous fulfillment | ✅ | `GET /fulfillment/chase-candidates`, `POST /fulfillment/track`; background auto-chase sweep (gated `MH_EH2_FULFILLMENT`) | `eh2_fulfillment.go`, `module.go` |
+| EH-3 Notifications | ✅ | `POST /notifications/send`; email + WhatsApp senders, BM templates; auto-sent on chase + payment | `eh3_notifications.go` |
+| EH-4 AI content | ✅ | `POST /copilot/generate-content` (descriptions/SEO/auto-categorize) | `eh4_ai_content.go` |
+| EH-5 Recommendations & analytics | ✅ | `GET /analytics/insights` (monthly sales + drop detection), `GET /recommendations` (same-category upsell) | `eh5_recommendations.go`, `module.go` |
+| EH-6 Payments + multi-currency | ✅ | `POST /orders/:id/charge` (mock gateway, FX convert), `POST /payments/webhook`, `GET /pay/mock/:ref`, `GET /currencies` | `eh6_payments.go`, `module.go` |
 
-All EH items are gated by `enhancements.Enabled()` / `MH_*` env flags, default OFF,
-and are NOT mounted by `server.Mount` — protecting v1 scope per PRD §10 / SPRINT_PLAN.
+**Scope-safety:** seller-invoked endpoints are mounted and work for the caller's
+own tenant. The only AUTONOMOUS behaviour — the EH-2 background auto-chase loop —
+stays gated behind `MH_EH2_FULFILLMENT=true` (default OFF). The payment webhook
+optionally verifies `X-Gateway-Signature` against `MH_GATEWAY_SECRET`.
+
+Live-verified end-to-end: copilot create-product, content gen, analytics,
+recommendations, charge(MYR→USD)→webhook→order `payment_accepted`, chase
+candidates + autonomous sweep emitting BM reminders, WhatsApp/email log sinks.
 
 ## Verification done in this build
 - `go build ./...`, `go vet ./...`, `go test ./...` green.

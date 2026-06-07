@@ -2,6 +2,7 @@ package enhancements
 
 import (
 	"context"
+	"regexp"
 	"strings"
 )
 
@@ -73,7 +74,7 @@ func (r *Router) Route(req AgentRequest) AgentKind {
 		return AgentStorefrontAssistant
 	case containsAny(msg, "track", "shipping", "deliver", "poslaju", "status"):
 		return AgentFulfillment
-	case req.Role == "seller" && containsAny(msg, "update", "create", "change", "set price", "edit"):
+	case req.Role == "seller" && containsAny(msg, "add", "tambah", "create", "update", "change", "tukar", "set price", "set the price", "edit", "advance", "price", "harga", "generate", "draft"):
 		return AgentSellerCopilot
 	default:
 		return AgentStorefrontAssistant
@@ -95,4 +96,81 @@ func containsAny(s string, subs ...string) bool {
 		}
 	}
 	return false
+}
+
+// --- Seller Copilot natural-language → structured action parser ---
+//
+// Deterministic, regex-based interpreter that turns a few clear intents into
+// ProposedActions. It NEVER executes; the caller confirms via /copilot/execute.
+// (A future slice can swap this for an LLM classifier behind the same shape.)
+
+var (
+	reAddProduct   = regexp.MustCompile(`(?i)\b(?:add|create|tambah)\b\s+(?:product\s+|produk\s+)?(.+?)\s+(?:price|harga|for|@|rm)\s*rm?\s*([0-9]+(?:\.[0-9]{1,2})?)`)
+	reSetPrice     = regexp.MustCompile(`(?i)\b(?:set|change|update|tukar)\b\s+price\s+(?:of\s+|for\s+)?(\S+)\s+(?:to\s+)?rm?\s*([0-9]+(?:\.[0-9]{1,2})?)`)
+	reCategory     = regexp.MustCompile(`(?i)categor(?:y|i)\s+([\p{L}\p{N} ]+?)(?:\s+sku\b|$)`)
+	reSKU          = regexp.MustCompile(`(?i)\bsku\s+(\S+)`)
+	reAdvanceOrder = regexp.MustCompile(`(?i)\b(?:advance|move|set|ship)\b\s+order\s+([0-9a-f-]{6,})(?:\s+to\s+(\w+))?`)
+	reGenContent   = regexp.MustCompile(`(?i)\b(?:generate|write|draft)\b\s+(?:a\s+)?(?:description|desc|copy|seo)\s+(?:for\s+)?(.+)$`)
+)
+
+// ParseSellerCommand best-effort parses a seller message into proposed actions.
+func ParseSellerCommand(message string) []ProposedAction {
+	msg := strings.TrimSpace(message)
+	var actions []ProposedAction
+
+	if m := reAddProduct.FindStringSubmatch(msg); m != nil {
+		params := map[string]string{
+			"product_name": strings.TrimSpace(stripTrailers(m[1])),
+			"unit_price":   m[2],
+		}
+		if c := reCategory.FindStringSubmatch(msg); c != nil {
+			params["category"] = strings.TrimSpace(c[1])
+		}
+		if s := reSKU.FindStringSubmatch(msg); s != nil {
+			params["sku"] = s[1]
+		}
+		actions = append(actions, ProposedAction{Kind: "create_product", Params: params})
+		return actions
+	}
+
+	if m := reSetPrice.FindStringSubmatch(msg); m != nil {
+		actions = append(actions, ProposedAction{
+			Kind:   "update_product_price",
+			Target: m[1],
+			Params: map[string]string{"sku": m[1], "unit_price": m[2]},
+		})
+		return actions
+	}
+
+	if m := reAdvanceOrder.FindStringSubmatch(msg); m != nil {
+		to := m[2]
+		if to == "" && strings.Contains(strings.ToLower(msg), "ship") {
+			to = "shipped"
+		}
+		actions = append(actions, ProposedAction{
+			Kind:   "advance_order_status",
+			Target: m[1],
+			Params: map[string]string{"status": to},
+		})
+		return actions
+	}
+
+	if m := reGenContent.FindStringSubmatch(msg); m != nil {
+		actions = append(actions, ProposedAction{
+			Kind:   "generate_content",
+			Params: map[string]string{"product_name": strings.TrimSpace(m[1])},
+		})
+	}
+	return actions
+}
+
+// stripTrailers removes a trailing " category ..." / " sku ..." captured by the
+// loose product-name group.
+func stripTrailers(name string) string {
+	for _, kw := range []string{" category ", " categori ", " sku ", " kategori "} {
+		if i := strings.Index(strings.ToLower(name), kw); i >= 0 {
+			name = name[:i]
+		}
+	}
+	return strings.TrimSpace(name)
 }

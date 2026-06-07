@@ -15,6 +15,7 @@ const routes = [
       { path: 'orders', component: () => import('./views/Orders.vue') },
       { path: 'customers', component: () => import('./views/Customers.vue') },
       { path: 'coupons', component: () => import('./views/Coupons.vue') },
+      { path: 'copilot', component: () => import('./views/Copilot.vue') },
     ],
   },
   // Public storefront

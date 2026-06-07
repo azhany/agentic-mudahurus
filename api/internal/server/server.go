@@ -2,8 +2,10 @@
 package server
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 
@@ -20,6 +22,7 @@ import (
 	"github.com/mudahurus/api/internal/customers"
 	"github.com/mudahurus/api/internal/dashboard"
 	"github.com/mudahurus/api/internal/db"
+	"github.com/mudahurus/api/internal/enhancements"
 	"github.com/mudahurus/api/internal/events"
 	"github.com/mudahurus/api/internal/httpx"
 	"github.com/mudahurus/api/internal/notify"
@@ -129,6 +132,19 @@ func (a *App) Mount() {
 	// Public invoice + payment proof upload (FR-3.4, FR-3.5).
 	storeGroup.GET("/invoice/:id", ordersHandler.PublicInvoice)
 	storeGroup.POST("/orders/:id/payment", ordersHandler.PublicUploadPayment)
+
+	// --- Enhancement Backlog (EH-1..EH-6) ---
+	// Seller-invoked endpoints work immediately; autonomous behaviour (EH-2
+	// auto-chase) is gated behind MH_EH2_FULFILLMENT (default off).
+	publicBase := os.Getenv("API_PUBLIC_BASE_URL")
+	if publicBase == "" {
+		publicBase = "http://localhost" + a.Cfg.HTTPAddr
+	}
+	ehModule := enhancements.NewModule(a.Pool, catalogSvc, ordersSvc, ordersRepo, a.Mailer, a.Log, publicBase)
+	ehPublic := e.Group("")
+	ehPublic.Use(accessLogger.Middleware())
+	ehModule.Routes(authed, ehPublic)
+	ehModule.StartBackground(context.Background())
 
 	// --- local object-storage serve route (signed) ---
 	if isLocal {
