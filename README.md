@@ -42,12 +42,56 @@ Run the web SPA:
 cd web && npm install && npm run dev
 ```
 
+## Seed demo data & test accounts
+
+Populate the database with demo accounts and a fully-stocked store (idempotent —
+safe to re-run; re-running resets the demo passwords):
+
+```bash
+cd api && go run ./cmd/seed          # local: uses DATABASE_URL / .env defaults
+# or, with the docker stack running:
+cd infra && docker compose run --rm seed
+```
+
+This creates the three personas from the PRD (§4):
+
+| Persona | Role | Login | Password | Where |
+|---|---|---|---|---|
+| **Super Admin** | `operator` | `superadmin` | `superadmin123` | Admin SPA + `/operator/*` routes |
+| **Store Owner / Admin** | `seller` | `kedaiali` | `kedaiali123` | Admin SPA — pre-loaded with 5 products, 2 customers, 1 coupon, 2 orders |
+| **Store Owner / Admin** | `seller` | `butiksiti` | `butiksiti123` | A second store (proves tenant isolation) |
+| **Customer** | _none (public)_ | — | — | Shop **`/store/kedaiali`** and check out as a guest |
+
+> **Customers are not user accounts** in this system — buyers use the public
+> storefront (guest checkout + payment-proof upload). To "view as a customer",
+> open `/store/kedaiali` in the SPA (no login). Customer *records* (Aminah, Hafiz)
+> are seeded under the seller for the admin Customers screen.
+
+### Test each persona quickly (curl)
+```bash
+# Super Admin — operator-only route
+TOKEN=$(curl -s -X POST localhost:8080/auth/login -H 'Content-Type: application/json' \
+  -d '{"username":"superadmin","password":"superadmin123"}' | jq -r .access_token)
+curl -s localhost:8080/operator/tenants/count -H "Authorization: Bearer $TOKEN"
+
+# Store Owner — dashboard KPIs
+TOKEN=$(curl -s -X POST localhost:8080/auth/login -H 'Content-Type: application/json' \
+  -d '{"username":"kedaiali","password":"kedaiali123"}' | jq -r .access_token)
+curl -s localhost:8080/dashboard/counts -H "Authorization: Bearer $TOKEN"
+
+# Customer — public storefront (no auth)
+curl -s localhost:8080/store/kedaiali
+```
+
+In the SPA: log in at `/login`, or open the storefront at `/store/kedaiali`.
+
 ## Roadmap status
 
 This repository implements the committed **v1 scope** (EP-0 … EP-10, Sprint 0 … 6) plus
-scaffolds for the post-v1 **Enhancement Backlog** (EH-1 … EH-6) under
+the post-v1 **Enhancement Backlog** (EH-1 … EH-6), now implemented and mounted under
 [`api/internal/enhancements`](api/internal/enhancements) and [`rag/mudahurus_rag/enhancements`](rag/mudahurus_rag/enhancements).
-See [`docs/IMPLEMENTATION.md`](docs/IMPLEMENTATION.md) for the build log mapping each story (MH-/EH-) to code.
+See [`docs/IMPLEMENTATION.md`](docs/IMPLEMENTATION.md) for the story→code build log and
+[`docs/ENHANCEMENTS.md`](docs/ENHANCEMENTS.md) for the EH endpoints + feature flags.
 
 ## Multi-tenancy
 

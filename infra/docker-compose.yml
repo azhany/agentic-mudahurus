@@ -69,6 +69,16 @@ services:
       LLM_PROVIDER: echo
     ports: ["8000:8000"]
 
+  # Opt-in one-shot seeder: `docker compose run --rm seed`
+  seed:
+    build: ../api
+    profiles: ["tools"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgres://mudahurus:mudahurus@postgres:5432/mudahurus?sslmode=disable
+    entrypoint: ["/app/seed"]
+
   web:
     build: ../web
     depends_on: [api]
